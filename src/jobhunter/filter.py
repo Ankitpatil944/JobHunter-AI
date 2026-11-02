@@ -38,6 +38,11 @@ TITLE_LOCK = re.compile(
     r"remote\s*[-–(,/:]?\s*\(?(us|usa|u\.s\.|uk|canada|europe|eu|germany|brazil|mexico|poland|spain|france|australia)\b)",
     re.I,
 )
+# "5+ years of experience", "3-5 years' experience", "minimum 6 years of relevant experience".
+REQUIRED_YEARS = re.compile(
+    r"\b(\d{1,2})\s*(?:\+|plus|or more|(?:-|–|to)\s*\d{1,2}\+?)?\s*years?\b[^.\n]{0,40}\bexperience\b",
+    re.I,
+)
 # These boards only list open roles, so an old post date doesn't mean the job has closed.
 LIVE_BOARDS = {"greenhouse", "ashby"}
 SPONSOR = re.compile(
@@ -57,6 +62,8 @@ class Rules:
     def __init__(self, search: dict):
         self.roles = {name: _phrases(words) for name, words in (search.get("roles") or {}).items()}
         self.exclude = _phrases(search.get("exclude_titles") or [])
+        self.always_allow = _phrases(search.get("always_allow") or [])
+        self.max_required_years = search.get("max_required_years")
         self.max_age_days = search.get("max_age_days", 30)
 
 
@@ -65,6 +72,12 @@ def match_role(title: str, rules: Rules) -> str | None:
         if pattern and pattern.search(title):
             return name
     return None
+
+
+def required_years(description: str) -> int | None:
+    """The lowest experience requirement stated, since higher ones are often only preferred."""
+    years = [int(m) for m in REQUIRED_YEARS.findall(description or "")]
+    return min(years) if years else None
 
 
 def offers_visa(description: str) -> bool:
@@ -117,7 +130,9 @@ def evaluate(title: str, location: str, remote: bool, description: str, posted_a
     markets, eligibility = classify_market(location, remote, description, title)
     role = match_role(title, rules)
     reason = None
-    if rules.exclude and rules.exclude.search(title):
+    checked_title = rules.always_allow.sub(" ", title) if rules.always_allow else title
+    years = required_years(description)
+    if rules.exclude and rules.exclude.search(checked_title):
         reason = "excluded title"
     elif not role:
         reason = "no role match"
@@ -125,6 +140,8 @@ def evaluate(title: str, location: str, remote: bool, description: str, posted_a
         reason = "too old"
     elif eligibility == "restricted":
         reason = "not open to India"
+    elif rules.max_required_years is not None and years is not None and years > rules.max_required_years:
+        reason = "too much experience required"
     return {
         "relevant": int(reason is None),
         "role": role,

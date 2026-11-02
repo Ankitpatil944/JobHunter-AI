@@ -13,6 +13,7 @@ Tests: `.venv\Scripts\python -m pytest`
 
 ## Rules
 - Never use `rm`. Ask before deleting anything.
+- Don't run git commands. Give the person the commands and a commit message to run themselves.
 - Never change `resumes/base/`. Tailored resumes go in `resumes/tailored/<job id>/`.
 - Never add code that clicks Submit on an application.
 - Never bypass CAPTCHAs or anti-bot systems. If a site blocks us, report it and skip it.

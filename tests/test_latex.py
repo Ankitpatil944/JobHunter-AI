@@ -50,6 +50,17 @@ def test_short_skill_needs_whole_word():
     assert not any("Go" in item for item in latex.check_facts(BASE, tailored, SKILLS).needs_review)
 
 
+def test_moving_a_word_to_the_end_of_a_sentence_is_not_new():
+    base = BASE.replace("using PostgreSQL", "using PostgreSQL and FastAPI today")
+    tailored = BASE.replace("using PostgreSQL", "using PostgreSQL today and FastAPI.")
+    assert not latex.check_facts(base, tailored, SKILLS).notes
+
+
+def test_ordinary_words_are_not_skills():
+    tailored = BASE.replace("Reduced database", "Helped the rest of the team go faster on database")
+    assert not latex.check_facts(BASE, tailored, ["REST", "Go"]).needs_review
+
+
 def test_preamble_change_blocks():
     tailored = BASE.replace(r"\documentclass{article}", "\\documentclass{article}\n\\usepackage{xcolor}")
     assert latex.check_facts(BASE, tailored, SKILLS).blocking
@@ -96,6 +107,14 @@ def test_start_keeps_existing_draft(folders):
 def test_start_rejects_unknown_resume(folders):
     with pytest.raises(FileNotFoundError):
         tailor.start(1, "nope", **folders)
+
+
+@needs_compiler
+def test_base_filename_with_spaces_compiles_cleanly(tmp_path):
+    source = tmp_path / "Backend engineer.tex"
+    source.write_text(BASE.replace(r"\begin{document}", "\\usepackage{hyperref}\n\\begin{document}"), encoding="utf-8")
+    result = latex.compile_tex(source, tmp_path / "out")
+    assert result.ok and "os error" not in result.log
 
 
 @needs_compiler

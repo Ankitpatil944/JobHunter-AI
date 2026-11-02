@@ -2,16 +2,18 @@ from datetime import datetime, timezone
 
 import pytest
 
-from jobhunter.filter import Rules, classify_market, evaluate, match_role, offers_visa, too_old
+from jobhunter.filter import Rules, classify_market, evaluate, match_role, offers_visa, required_years, too_old
 
 RULES = Rules({
     "roles": {
         "ml_eng": ["machine learning"],
         "ai": ["ai engineer"],
         "backend": ["backend", "back-end"],
-        "software": ["software engineer", "sde"],
+        "software": ["software engineer", "sde", "member of technical staff"],
     },
-    "exclude_titles": ["manager", "sales", "vp"],
+    "exclude_titles": ["manager", "sales", "vp", "staff", "senior"],
+    "always_allow": ["member of technical staff"],
+    "max_required_years": 4,
     "max_age_days": 30,
 })
 
@@ -111,6 +113,37 @@ def test_age_limit_skips_live_company_boards():
     old = "2020-01-01T00:00:00+00:00"
     assert evaluate("Backend Engineer", "India", False, "", old, RULES, "greenhouse")["filter_reason"] is None
     assert evaluate("Backend Engineer", "India", False, "", old, RULES, "remoteok")["filter_reason"] == "too old"
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("5+ years of experience in Python", 5),
+    ("3-5 years' experience with SQL", 3),
+    ("3 to 5 years of relevant experience", 3),
+    ("Minimum 6 years of backend experience", 6),
+    ("2+ years of experience required. 8+ years of experience preferred.", 2),
+    ("We were founded 20 years ago.", None),
+    ("", None),
+])
+def test_required_years(text, expected):
+    assert required_years(text) == expected
+
+
+def test_experience_limit():
+    def reason(text):
+        return evaluate("Backend Engineer", "India", False, text, None, RULES)["filter_reason"]
+
+    assert reason("7+ years of experience") == "too much experience required"
+    assert reason("4 years of experience") is None
+    assert reason("No requirement stated") is None
+
+
+def test_seniority_titles_and_allowed_phrase():
+    def reason(title):
+        return evaluate(title, "India", False, "", None, RULES)["filter_reason"]
+
+    assert reason("Staff Software Engineer") == "excluded title"
+    assert reason("Senior Backend Engineer") == "excluded title"
+    assert reason("Member of Technical Staff") is None
 
 
 def test_evaluate_reasons():

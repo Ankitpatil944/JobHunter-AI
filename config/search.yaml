@@ -55,9 +55,11 @@ roles:
     - product engineer
     - forward deployed engineer
     - member of technical staff
-    - staff engineer
-    - senior engineer
-    - lead engineer
+  business_analyst:
+    - business analyst
+    - business systems analyst
+    - product analyst
+    - data analyst
 
 # Any of these in a title rejects the job.
 exclude_titles:
@@ -73,6 +75,21 @@ exclude_titles:
   - marketing
   - designer
   - clearance
+  # Seniority: currently a May 2026 graduate with about 1 year of experience.
+  - senior
+  - sr
+  - staff
+  - principal
+  - lead
+  - architect
+  - intern
+  - internship
 
+# Exclusion words inside these phrases don't count ("staff" here isn't a level).
+always_allow:
+  - member of technical staff
+
+# Reject postings whose lowest stated requirement is above this many years.
+max_required_years: 4
 max_age_days: 30
 daily_score_limit: 30

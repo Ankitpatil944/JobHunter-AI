@@ -2,6 +2,7 @@
 import difflib
 import os
 import re
+import shutil
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -33,6 +34,12 @@ class CheckResult:
 
 def compile_tex(tex: Path, outdir: Path, search_path: Path | None = None) -> Compiled:
     outdir.mkdir(parents=True, exist_ok=True)
+    # hyperref can't open its .out file when the name has spaces, so compile a copy.
+    if " " in tex.name:
+        safe = outdir / "input.tex"
+        shutil.copyfile(tex, safe)
+        search_path = search_path or tex.parent
+        tex = safe
     command = [str(TECTONIC), "--outdir", str(outdir), "--chatter", "minimal"]
     if search_path:
         command += ["-Z", f"search-path={search_path}"]
@@ -65,11 +72,14 @@ def visible_body(tex: str) -> str:
 
 def plain_words(tex_body: str) -> list[str]:
     text = re.sub(r"\\[a-zA-Z]+\*?", " ", tex_body)
-    return re.findall(r"[A-Za-z][A-Za-z+#.-]{2,}", text)
+    # Trailing punctuation isn't part of a word, or "FastAPI." reads as new next to "FastAPI".
+    return [w.rstrip(".-") for w in re.findall(r"[A-Za-z][A-Za-z+#.-]{2,}", text)]
 
 
 def _contains_term(term: str, text: str) -> bool:
-    return re.search(rf"(?<![A-Za-z0-9+#]){re.escape(term)}(?![A-Za-z0-9+#])", text, re.I) is not None
+    # Short names need exact case, so "the rest" and "go" don't count as REST and Go.
+    flags = 0 if len(term) <= 4 else re.I
+    return re.search(rf"(?<![A-Za-z0-9+#]){re.escape(term)}(?![A-Za-z0-9+#])", text, flags) is not None
 
 
 def check_facts(base_tex: str, tailored_tex: str, known_skills: list[str]) -> CheckResult:
