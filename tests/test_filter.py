@@ -121,6 +121,10 @@ def test_age_limit_skips_live_company_boards():
     ("3 to 5 years of relevant experience", 3),
     ("Minimum 6 years of backend experience", 6),
     ("2+ years of experience required. 8+ years of experience preferred.", 2),
+    ("Qualifications: Any Graduation Years of Experience: 7 to 11 years", 7),
+    ("5+ years of software engineering or developer relations experience.", 5),
+    ("15+ years of software engineering, systems engineering, security engineering", 15),
+    ("We have been in gaming for more than 25 years.", None),
     ("We were founded 20 years ago.", None),
     ("", None),
 ])

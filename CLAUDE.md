@@ -26,4 +26,6 @@ Tests: `.venv\Scripts\python -m pytest`
 ## Tailoring limits
 Allowed: reorder bullets and skills, and reword a bullet to use the job's terms when the fact is unchanged.
 
+The current job's title differs by resume on purpose. Keep each resume's title as it is, and never mix them.
+
 Not allowed: adding or inflating skills, employers, titles, dates, metrics or projects, or changing the preamble or template.

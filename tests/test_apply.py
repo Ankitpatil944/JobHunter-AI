@@ -85,6 +85,10 @@ def test_apply_command_uses_a_named_copy_and_records_it(tmp_path, monkeypatch):
     folder = tmp_path / "1"
     folder.mkdir()
     (folder / "resume.pdf").write_bytes(b"%PDF-1.4\n")
+    (folder / "resume.tex").write_text(
+        "\\begin{document}\n\\textbf{AI Engineer Intern \\,|\\, Sttarkel} \\hfill Jun 2025 -- Present\\\\\n\\end{document}",
+        encoding="utf-8",
+    )
     (tmp_path / "profile.yaml").write_text("x: 1", encoding="utf-8")
     calls = []
     monkeypatch.setattr(cli.db, "connect", lambda: conn)
@@ -94,7 +98,9 @@ def test_apply_command_uses_a_named_copy_and_records_it(tmp_path, monkeypatch):
     monkeypatch.setattr(filler, "run_browser", lambda *args: calls.append(args))
 
     assert cli.main(["apply", "1"]) == 0
-    url, _, pdf, india_job, supported, _ = calls[0]
+    url, used_profile, pdf, india_job, supported, _ = calls[0]
+    assert used_profile["work"]["current_title"] == "AI Engineer Intern"
+    assert used_profile["work"]["current_company"] == "Sttarkel"
     assert pdf.name == "Test_Person_Resume.pdf" and pdf.exists()
     assert url.startswith("https://job-boards") and india_job and supported
     assert conn.execute("SELECT status FROM applications").fetchone()["status"] == "prefilled"

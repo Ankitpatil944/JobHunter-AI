@@ -5,7 +5,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from jobhunter import db, tailor
+from jobhunter import db, latex, tailor
 from jobhunter.apply.fields import detect_system
 from jobhunter.config import CONFIG_DIR, load_yaml
 from jobhunter.filter import Rules, apply_filters
@@ -154,6 +154,16 @@ def _named_pdf(job_id: int, pdf: Path, profile: dict) -> Path:
     return target
 
 
+def _with_resume_role(profile: dict, job_id: int) -> dict:
+    """Titles differ between resumes, so the form must say what the attached resume says."""
+    tex = tailor.TAILORED_DIR / str(job_id) / "resume.tex"
+    role = latex.current_role(tex.read_text(encoding="utf-8")) if tex.exists() else None
+    if not role:
+        return profile
+    work = {**(profile.get("work") or {}), "current_title": role[0], "current_company": role[1]}
+    return {**profile, "work": work}
+
+
 def _print_report(report) -> None:
     if report is None:
         print("This site isn't supported for pre-filling, so the page was only opened.")
@@ -182,7 +192,7 @@ def cmd_apply(args) -> int:
     if not (CONFIG_DIR / "profile.yaml").exists():
         print("config/profile.yaml is missing. Copy config/profile.example.yaml and fill it in.", file=sys.stderr)
         return 1
-    profile = load_yaml("profile.yaml")
+    profile = _with_resume_role(load_yaml("profile.yaml"), args.job_id)
     pdf = Path(args.pdf) if args.pdf else tailor.TAILORED_DIR / str(args.job_id) / "resume.pdf"
     if not pdf.exists():
         print(f"No resume at {pdf}. Run /tailor {args.job_id} first, or pass --pdf.", file=sys.stderr)

@@ -18,6 +18,9 @@ NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
 MIN_TEXT_MATCH = 0.8
 
 
+CURRENT_ROLE = re.compile(r"\\textbf\{([^{}|]+?)\s*\\,\|\\,\s*([^{}]+?)\}\s*\\hfill[^\n]*Present")
+
+
 @dataclass
 class Compiled:
     ok: bool
@@ -108,6 +111,12 @@ def check_facts(base_tex: str, tailored_tex: str, known_skills: list[str]) -> Ch
     if items < base_items:
         result.notes.append(f"Bullets went from {base_items} to {items}.")
     return result
+
+
+def current_role(tex: str) -> tuple[str, str] | None:
+    """Return (title, company) from the experience line marked Present."""
+    match = CURRENT_ROLE.search(visible_body(tex))
+    return (match.group(1).strip(), match.group(2).strip()) if match else None
 
 
 def page_count(pdf: Path) -> int:

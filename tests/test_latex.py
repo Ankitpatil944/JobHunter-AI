@@ -61,6 +61,15 @@ def test_ordinary_words_are_not_skills():
     assert not latex.check_facts(BASE, tailored, ["REST", "Go"]).needs_review
 
 
+def test_current_role_reads_the_present_job():
+    tex = (r"\begin{document}" "\n"
+           r"\textbf{Old Intern \,|\, Past Co} \hfill Sep 2024 -- Dec 2024\\" "\n"
+           r"\textbf{Software Engineer Intern \,|\, Sttarkel Technologies} \hfill Jun 2025 -- Present\\" "\n"
+           r"\end{document}")
+    assert latex.current_role(tex) == ("Software Engineer Intern", "Sttarkel Technologies")
+    assert latex.current_role(BASE) is None
+
+
 def test_preamble_change_blocks():
     tailored = BASE.replace(r"\documentclass{article}", "\\documentclass{article}\n\\usepackage{xcolor}")
     assert latex.check_facts(BASE, tailored, SKILLS).blocking

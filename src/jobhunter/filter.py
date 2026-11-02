@@ -40,7 +40,9 @@ TITLE_LOCK = re.compile(
 )
 # "5+ years of experience", "3-5 years' experience", "minimum 6 years of relevant experience".
 REQUIRED_YEARS = re.compile(
-    r"\b(\d{1,2})\s*(?:\+|plus|or more|(?:-|–|to)\s*\d{1,2}\+?)?\s*years?\b[^.\n]{0,40}\bexperience\b",
+    r"(?:years of experience\s*:?\s*(\d{1,2})\b)"
+    r"|\b(\d{1,2})\s*(?:\+|plus|or more|(?:-|–|to)\s*\d{1,2}\+?)?\s*years?\b"
+    r"(?:[^.\n]{0,70}\bexperience\b|\s+of\s+(?:software|systems|backend|data|industry|professional)\b)",
     re.I,
 )
 # These boards only list open roles, so an old post date doesn't mean the job has closed.
@@ -85,7 +87,7 @@ def title_matches(title: str, rules: Rules) -> bool:
 
 def required_years(description: str) -> int | None:
     """The lowest experience requirement stated, since higher ones are often only preferred."""
-    years = [int(m) for m in REQUIRED_YEARS.findall(description or "")]
+    years = [int(a or b) for a, b in REQUIRED_YEARS.findall(description or "")]
     return min(years) if years else None
 
 

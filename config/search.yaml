@@ -55,11 +55,6 @@ roles:
     - product engineer
     - forward deployed engineer
     - member of technical staff
-  business_analyst:
-    - business analyst
-    - business systems analyst
-    - product analyst
-    - data analyst
 
 # Any of these in a title rejects the job.
 exclude_titles:
