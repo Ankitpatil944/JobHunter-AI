@@ -46,7 +46,7 @@ REQUIRED_YEARS = re.compile(
     re.I,
 )
 # These boards only list open roles, so an old post date doesn't mean the job has closed.
-LIVE_BOARDS = {"greenhouse", "ashby", "lever", "workday"}
+LIVE_BOARDS = {"greenhouse", "ashby", "lever", "workday", "indeed"}
 SPONSOR = re.compile(
     r"(visa sponsorship|sponsor(s|ing)? (a |your |work )?(visa|visas|work permit)|"
     r"relocation and visa|visa and relocation|visa support|work permit support)",

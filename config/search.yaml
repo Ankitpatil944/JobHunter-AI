@@ -17,6 +17,9 @@ roles:
     - genai
     - llm
     - ai developer
+    - ai platform engineer
+    - ai jr engineer
+    - ai software engineer
     - ai/ml
     - research engineer
     - applied scientist
@@ -29,6 +32,7 @@ roles:
     - big data
   backend:
     - backend
+    - database engineer
     - back end
     - back-end
     - python developer
@@ -47,6 +51,9 @@ roles:
     - software engineering
     - software developer
     - software development engineer
+    - software engr
+    - associate developer
+    - graduate engineer
     - sde
     - full stack
     - fullstack

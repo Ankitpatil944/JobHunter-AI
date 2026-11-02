@@ -13,8 +13,8 @@ NAME = "workday"
 MIN_INTERVAL_HOURS = 12
 QUERIES = ["software engineer", "backend engineer", "data engineer", "machine learning engineer", "AI engineer"]
 PAGE_SIZE = 20
-MAX_PAGES = 3
-MAX_DETAILS_PER_COMPANY = 60
+MAX_PAGES = 2
+MAX_DETAILS_PER_COMPANY = 30
 
 
 def site_url(company: dict) -> str:

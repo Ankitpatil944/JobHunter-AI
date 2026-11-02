@@ -7,7 +7,8 @@ from jobhunter import db
 from jobhunter.http import Http
 from jobhunter.models import Job, normalize_url
 from jobhunter.sources import (
-    arbeitnow, ashby, greenhouse, hackernews, himalayas, jobicy, lever, remoteok, remotive, weworkremotely, workday,
+    arbeitnow, ashby, greenhouse, hackernews, himalayas, jobicy, landingjobs, lever, nodesk, remoteok, remotive,
+    weworkremotely, workday,
 )
 
 
@@ -120,6 +121,38 @@ def test_ashby_combines_locations_and_skips_unlisted():
     ]}, "ramp")
     assert len(jobs) == 1
     assert jobs[0].title == "SDE" and jobs[0].location == "New York, Remote (Canada)"
+
+
+def test_nodesk_splits_role_and_company():
+    jobs = nodesk.parse("""<rss><channel>
+      <item><title>Backend Engineer at Data at Scale</title><description>About</description>
+        <link>https://nodesk.co/remote-jobs/x/</link><pubDate>Mon, 02 Nov 2026 10:00:00 +0000</pubDate></item>
+      <item><title>No company here</title><link>https://nodesk.co/y/</link></item>
+    </channel></rss>""")
+    assert len(jobs) == 1
+    assert (jobs[0].title, jobs[0].company, jobs[0].remote) == ("Backend Engineer at Data", "Scale", True)
+
+
+def test_feed_survives_invalid_xml():
+    # NoDesk uses undeclared HTML entities and Landing.jobs an undeclared prefix. One bad item is skipped.
+    jobs = nodesk.parse("""<rss><channel>
+      <item><title>SDE at Acme&nbsp;Inc</title><description>Tom &amp; Jerry &copy; 2026</description>
+        <link>https://nodesk.co/a/</link></item>
+      <item><title>Broken at Item<description></title></item>
+      <item><title>QA at Beta</title><media:thumbnail url="x"/><link>https://nodesk.co/b/</link></item>
+    </channel></rss>""")
+    assert [j.url for j in jobs] == ["https://nodesk.co/a/", "https://nodesk.co/b/"]
+
+
+def test_landingjobs_reads_company_and_location():
+    job = landingjobs.parse("""<feed xmlns="http://www.w3.org/2005/Atom"><entry>
+      <published>2026-11-02T10:31:53Z</published>
+      <link rel="alternate" href="https://landing.jobs/at/acme/sde?utm_source=rss"/>
+      <title>SDE</title>
+      <content type="html"><![CDATA[<div class="offer-info">At Accenture (Permanent), in Lisbon, Portugal<br />Expires at: 2027-06-08<br />Remote policy: Partial remote</div><p>Text</p>]]></content>
+    </entry></feed>""")[0]
+    assert (job.company, job.location, job.remote) == ("Accenture", "Lisbon, Portugal", False)
+    assert job.url_key == "https://landing.jobs/at/acme/sde"
 
 
 def test_lever_combines_description_and_converts_milliseconds():

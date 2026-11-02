@@ -6,6 +6,7 @@ Finds jobs, tailors LaTeX resumes and pre-fills applications. A person always cl
 Run with `.venv\Scripts\python -m jobhunter <command>`:
 - `fetch`: get new jobs and re-run the filters. Sources have minimum fetch intervals; use `--force` sparingly.
 - `list [--market] [--role] [--eligibility] [--unscored]`, `show <id>`, `status`
+- `import-jobs <file.json> [--source indeed]`: load connector results (title, company, location, url, posted_at, remote, description)
 - `score <id> <0-100> --resume <name> --reason "..." --gaps "..."`
 - `tailor-start <id> <resume>`, `tailor-check <id> [--approved]`
 - `apply <id> [--pdf path]`: pre-fill in a visible browser. `mark <id> applied|skipped|interview|rejected|offer`
@@ -18,6 +19,7 @@ Tests: `.venv\Scripts\python -m pytest`
 - Never change `resumes/base/`. Tailored resumes go in `resumes/tailored/<job id>/`.
 - Never add code that clicks Submit on an application.
 - Never bypass CAPTCHAs or anti-bot systems. If a site blocks us, report it and skip it.
+- Never add a source whose terms ban scraping or automated access, even if `robots.txt` allows it. README.md lists each site's status.
 - Never store passwords. The person logs in to portals themselves.
 - Never commit or push `data/`, `resumes/`, `config/profile.yaml`, `tools/`, `.cache/` or `.venv/`. Check staged files before each push.
 - Keep all tools and caches on E:. Keep each source's link and credit when showing jobs, as Remote OK and Remotive require.

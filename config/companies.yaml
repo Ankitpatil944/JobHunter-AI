@@ -15,6 +15,14 @@ greenhouse:
   - scaleai
   - groww
   - razorpaysoftwareprivatelimited
+  - druva
+  - rubrik
+  - inmobi
+  - twilio
+  - okta
+  - turing
+  - observeai
+  - slice
 
 lever:
   - meesho
@@ -22,6 +30,9 @@ lever:
   - zeta
   - spotify
   - palantir
+  - paytm
+  - fampay
+  - mindtickle
 
 workday:
   - {name: NVIDIA, tenant: nvidia, dc: wd5, site: NVIDIAExternalCareerSite}
@@ -30,6 +41,16 @@ workday:
   - {name: Intel, tenant: intel, dc: wd1, site: External}
   - {name: Mastercard, tenant: mastercard, dc: wd1, site: CorporateCareers}
   - {name: Accenture, tenant: accenture, dc: wd103, site: AccentureCareers}
+  - {name: Cisco, tenant: cisco, dc: wd5, site: Cisco_Careers}
+  - {name: PayPal, tenant: paypal, dc: wd1, site: jobs}
+  - {name: Morgan Stanley, tenant: ms, dc: wd5, site: External}
+  - {name: Wells Fargo, tenant: wf, dc: wd1, site: WellsFargoJobs}
+  - {name: HP, tenant: hp, dc: wd5, site: ExternalCareerSite}
+  - {name: Samsung, tenant: sec, dc: wd3, site: Samsung_Careers}
+  - {name: Broadcom, tenant: broadcom, dc: wd1, site: External_Career}
+  - {name: Red Hat, tenant: redhat, dc: wd5, site: jobs}
+  - {name: Thomson Reuters, tenant: thomsonreuters, dc: wd5, site: External_Career_Site}
+  - {name: Target, tenant: target, dc: wd5, site: targetcareers}
 
 ashby:
   - ramp
@@ -42,3 +63,8 @@ ashby:
   - replit
   - deepgram
   - sarvam
+  - atlan
+  - composio
+  - cursor
+  - exa
+  - supabase

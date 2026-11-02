@@ -1,5 +1,6 @@
 """Command line interface: python -m jobhunter <command>."""
 import argparse
+import json
 import shutil
 import sys
 from datetime import datetime, timedelta, timezone
@@ -10,6 +11,7 @@ from jobhunter.apply.fields import detect_system
 from jobhunter.config import CONFIG_DIR, load_yaml
 from jobhunter.filter import Rules, apply_filters
 from jobhunter.http import Http
+from jobhunter.models import Job
 from jobhunter.sources import SOURCES
 
 
@@ -41,6 +43,29 @@ def cmd_fetch(args) -> int:
     relevant = apply_filters(conn, Rules(load_yaml("search.yaml")))
     conn.commit()
     print(f"\n{relevant} relevant jobs after filtering")
+    return 0
+
+
+def cmd_import(args) -> int:
+    """Load jobs from a JSON list, such as Indeed connector results, and re-run the filters."""
+    conn = db.connect()
+    items = json.loads(Path(args.file).read_text(encoding="utf-8"))
+    added = 0
+    for item in items:
+        added += db.upsert_job(conn, Job(
+            source=args.source,
+            url=item["url"],
+            company=item.get("company") or "",
+            title=item["title"],
+            location=item.get("location") or "",
+            remote=bool(item.get("remote")),
+            description=item.get("description") or "",
+            posted_at=item.get("posted_at"),
+        ))
+    db.record_run(conn, args.source, True, len(items), added)
+    relevant = apply_filters(conn, Rules(load_yaml("search.yaml")))
+    conn.commit()
+    print(f"{len(items)} read, {added} new. {relevant} relevant jobs after filtering")
     return 0
 
 
@@ -234,6 +259,11 @@ def main(argv: list[str] | None = None) -> int:
     fetch.add_argument("--source", action="append", choices=sorted(SOURCES))
     fetch.add_argument("--force", action="store_true", help="ignore the minimum fetch interval")
     fetch.set_defaults(func=cmd_fetch)
+
+    importer = sub.add_parser("import-jobs", help="load jobs from a JSON file, such as connector results")
+    importer.add_argument("file")
+    importer.add_argument("--source", default="indeed")
+    importer.set_defaults(func=cmd_import)
 
     listing = sub.add_parser("list", help="list relevant jobs")
     listing.add_argument("--market", choices=["india_onsite", "india_remote", "global_remote", "visa_sponsor"])
