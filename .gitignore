@@ -1,0 +1,25 @@
+# Personal data: never push
+config/profile.yaml
+resumes/base/
+resumes/tailored/
+data/
+
+# Local tools and environments
+tools/
+.venv/
+.cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# LaTeX build output
+*.aux
+*.log
+*.out
+*.xdv
+*.fls
+*.fdb_latexmk
+*.synctex.gz

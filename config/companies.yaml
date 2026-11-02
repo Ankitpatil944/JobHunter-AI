@@ -1,0 +1,29 @@
+# Companies to watch on each hiring system, using the slug from their careers URL.
+# A wrong slug only produces a warning in `fetch`. Add your own target companies here.
+greenhouse:
+  - stripe
+  - anthropic
+  - databricks
+  - figma
+  - coinbase
+  - gitlab
+  - datadog
+  - mongodb
+  - cloudflare
+  - elastic
+  - airbnb
+  - scaleai
+  - groww
+  - razorpaysoftwareprivatelimited
+
+ashby:
+  - ramp
+  - openai
+  - notion
+  - linear
+  - perplexity
+  - cohere
+  - elevenlabs
+  - replit
+  - deepgram
+  - sarvam

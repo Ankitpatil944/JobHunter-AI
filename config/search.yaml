@@ -1,0 +1,78 @@
+# What counts as a relevant job. Phrases match whole words in the job title, ignoring case.
+# Roles are checked in this order and the first match wins, so specific roles come first.
+roles:
+  ml_eng:
+    - machine learning
+    - ml
+    - mlops
+    - ml ops
+    - ml platform
+    - deep learning
+    - computer vision
+    - nlp engineer
+  ai:
+    - ai engineer
+    - applied ai
+    - generative ai
+    - genai
+    - llm
+    - ai developer
+    - ai/ml
+    - research engineer
+    - applied scientist
+  data_eng:
+    - data engineer
+    - data engineering
+    - analytics engineer
+    - data platform
+    - etl developer
+    - big data
+  backend:
+    - backend
+    - back end
+    - back-end
+    - python developer
+    - python engineer
+    - golang developer
+    - golang engineer
+    - go engineer
+    - java developer
+    - java engineer
+    - api engineer
+    - platform engineer
+    - infrastructure engineer
+    - distributed systems
+  software:
+    - software engineer
+    - software engineering
+    - software developer
+    - software development engineer
+    - sde
+    - full stack
+    - fullstack
+    - full-stack
+    - founding engineer
+    - product engineer
+    - forward deployed engineer
+    - member of technical staff
+    - staff engineer
+    - senior engineer
+    - lead engineer
+
+# Any of these in a title rejects the job.
+exclude_titles:
+  - director
+  - vice president
+  - vp
+  - head of
+  - chief
+  - manager
+  - sales
+  - recruiter
+  - account executive
+  - marketing
+  - designer
+  - clearance
+
+max_age_days: 30
+daily_score_limit: 30
