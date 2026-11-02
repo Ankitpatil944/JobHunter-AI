@@ -8,6 +8,8 @@ from jobhunter.models import Job, html_to_text
 NAME = "greenhouse"
 MIN_INTERVAL_HOURS = 6
 URL = "https://boards-api.greenhouse.io/v1/boards/{}/jobs"
+# Companies host job pages on their own sites, but this form address works for all of them.
+APPLY_URL = "https://job-boards.greenhouse.io/embed/job_app?for={}&token={}"
 REMOTE = re.compile(r"\bremote\b", re.I)
 
 
@@ -25,6 +27,7 @@ def parse(data: dict, slug: str) -> list[Job]:
                 remote=bool(REMOTE.search(location)),
                 description=html_to_text(item.get("content")),
                 posted_at=item.get("first_published") or item.get("updated_at"),
+                apply_url=APPLY_URL.format(slug, item.get("id")),
             )
         )
     return jobs

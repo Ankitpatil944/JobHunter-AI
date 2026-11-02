@@ -1,10 +1,13 @@
 """Command line interface: python -m jobhunter <command>."""
 import argparse
+import shutil
 import sys
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from jobhunter import db, tailor
-from jobhunter.config import load_yaml
+from jobhunter.apply.fields import detect_system
+from jobhunter.config import CONFIG_DIR, load_yaml
 from jobhunter.filter import Rules, apply_filters
 from jobhunter.http import Http
 from jobhunter.sources import SOURCES
@@ -90,6 +93,18 @@ def cmd_status(args) -> int:
             counts[(market, row["eligibility"])] = counts.get((market, row["eligibility"]), 0) + 1
     for (market, eligibility), count in sorted(counts.items()):
         print(f"  {market:<16}{eligibility:<8}{count:>6}")
+    print("\nApplications:")
+    for row in conn.execute("SELECT status, COUNT(*) AS n FROM applications GROUP BY status ORDER BY status"):
+        print(f"  {row['status']:<16}{row['n']:>6}")
+    due = conn.execute(
+        """SELECT j.id, j.company, j.title, a.follow_up_on FROM applications a JOIN jobs j ON j.id = a.job_id
+           WHERE a.status = 'applied' AND a.follow_up_on <= ? ORDER BY a.follow_up_on""",
+        (datetime.now(timezone.utc).date().isoformat(),),
+    ).fetchall()
+    if due:
+        print("\nFollow-ups due:")
+        for row in due:
+            print(f"  {row['id']:>6} {row['company']}: {row['title']} (since {row['follow_up_on']})")
     print("\nLatest run per source:")
     for row in conn.execute(
         """SELECT source, ok, fetched, added, message, MAX(started_at) AS started_at
@@ -127,6 +142,76 @@ def cmd_tailor_check(args) -> int:
     if report.pdf:
         print(f"NOT PASSED. Using the untouched base resume: {report.pdf}")
     return 1
+
+
+def _named_pdf(job_id: int, pdf: Path, profile: dict) -> Path:
+    """Copy the PDF to a name that looks right to the recruiter who receives it."""
+    name = profile.get("name") or {}
+    stem = "_".join(str(p).strip() for p in (name.get("first"), name.get("last")) if p)
+    target = tailor.TAILORED_DIR / str(job_id) / f"{stem or 'Candidate'}_Resume.pdf"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(pdf, target)
+    return target
+
+
+def _print_report(report) -> None:
+    if report is None:
+        print("This site isn't supported for pre-filling, so the page was only opened.")
+    else:
+        print(f"Filled {len(report.filled)} fields:")
+        for label, value in report.filled:
+            print(f"  {label}: {value}")
+        print(f"Resume attached: {'yes' if report.resume_attached else 'NO, attach it yourself'}")
+        print(f"Needs you ({len(report.needs_you)}, highlighted in yellow):")
+        for label in report.needs_you:
+            print(f"  {label}")
+        if report.optional_blank:
+            print(f"Optional and left blank: {len(report.optional_blank)}")
+    print("\nNothing has been submitted. Review the page, click Submit yourself, then close the browser.")
+    print("Afterwards, record it with: python -m jobhunter mark <id> applied")
+
+
+def cmd_apply(args) -> int:
+    from jobhunter.apply.filler import run_browser
+
+    conn = db.connect()
+    row = conn.execute("SELECT * FROM jobs WHERE id = ?", (args.job_id,)).fetchone()
+    if not row:
+        print(f"No job with id {args.job_id}", file=sys.stderr)
+        return 1
+    if not (CONFIG_DIR / "profile.yaml").exists():
+        print("config/profile.yaml is missing. Copy config/profile.example.yaml and fill it in.", file=sys.stderr)
+        return 1
+    profile = load_yaml("profile.yaml")
+    pdf = Path(args.pdf) if args.pdf else tailor.TAILORED_DIR / str(args.job_id) / "resume.pdf"
+    if not pdf.exists():
+        print(f"No resume at {pdf}. Run /tailor {args.job_id} first, or pass --pdf.", file=sys.stderr)
+        return 1
+
+    url = row["apply_url"] or row["url"]
+    supported = detect_system(url) is not None
+    named = _named_pdf(args.job_id, pdf, profile)
+    print(f"{row['company']}: {row['title']}\nForm: {url}\nResume: {named}\n")
+    db.set_application(conn, args.job_id, "prefilled", resume_path=str(named))
+    conn.commit()
+    run_browser(url, profile, named if supported else None, row["markets"].startswith("india"), supported, _print_report)
+    return 0
+
+
+def cmd_mark(args) -> int:
+    conn = db.connect()
+    if not conn.execute("SELECT 1 FROM jobs WHERE id = ?", (args.job_id,)).fetchone():
+        print(f"No job with id {args.job_id}", file=sys.stderr)
+        return 1
+    applied_at = follow_up = None
+    if args.status == "applied":
+        today = datetime.now(timezone.utc)
+        applied_at = today.isoformat()
+        follow_up = (today + timedelta(days=args.follow_up_days)).date().isoformat()
+    db.set_application(conn, args.job_id, args.status, notes=args.notes, applied_at=applied_at, follow_up_on=follow_up)
+    conn.commit()
+    print(f"Job {args.job_id}: {args.status}" + (f", follow up on {follow_up}" if follow_up else ""))
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -173,6 +258,18 @@ def main(argv: list[str] | None = None) -> int:
     tailor_check.add_argument("--approved", action="store_true",
                               help="the person has reviewed the flagged new numbers and skills")
     tailor_check.set_defaults(func=cmd_tailor_check)
+
+    apply = sub.add_parser("apply", help="pre-fill an application in a browser; you click Submit")
+    apply.add_argument("job_id", type=int)
+    apply.add_argument("--pdf", help="resume to attach, instead of the job's tailored PDF")
+    apply.set_defaults(func=cmd_apply)
+
+    mark = sub.add_parser("mark", help="record what happened with an application")
+    mark.add_argument("job_id", type=int)
+    mark.add_argument("status", choices=["applied", "skipped", "interview", "rejected", "offer"])
+    mark.add_argument("--notes")
+    mark.add_argument("--follow-up-days", type=int, default=7)
+    mark.set_defaults(func=cmd_mark)
 
     args = parser.parse_args(argv)
     return args.func(args)

@@ -24,13 +24,16 @@ class Http:
         self.warnings.append(message)
 
     def _get(self, url: str, **kwargs) -> httpx.Response:
+        return self._request("GET", url, **kwargs)
+
+    def _request(self, method: str, url: str, **kwargs) -> httpx.Response:
         for attempt in range(self.retries + 1):
             wait = self.delay - (time.monotonic() - self._last)
             if wait > 0:
                 time.sleep(wait)
             self._last = time.monotonic()
             try:
-                response = self._client.get(url, **kwargs)
+                response = self._client.request(method, url, **kwargs)
             except httpx.TransportError:
                 if attempt == self.retries:
                     raise
@@ -45,6 +48,9 @@ class Http:
 
     def get_json(self, url: str, **kwargs):
         return self._get(url, **kwargs).json()
+
+    def post_json(self, url: str, payload: dict):
+        return self._request("POST", url, json=payload, headers={"Accept": "application/json"}).json()
 
     def get_text(self, url: str, **kwargs) -> str:
         return self._get(url, **kwargs).text

@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     remote INTEGER NOT NULL DEFAULT 0,
     description TEXT NOT NULL DEFAULT '',
     posted_at TEXT,
+    apply_url TEXT NOT NULL DEFAULT '',
     first_seen TEXT NOT NULL,
     last_seen TEXT NOT NULL,
     also_on TEXT NOT NULL DEFAULT '',
@@ -70,6 +71,10 @@ def connect(path: Path | str = DB_PATH) -> sqlite3.Connection:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
+    # Databases made before apply_url existed need the column before the schema runs.
+    if conn.execute("SELECT 1 FROM sqlite_master WHERE name = 'jobs'").fetchone():
+        if "apply_url" not in {row["name"] for row in conn.execute("PRAGMA table_info(jobs)")}:
+            conn.execute("ALTER TABLE jobs ADD COLUMN apply_url TEXT NOT NULL DEFAULT ''")
     conn.executescript(SCHEMA)
     return conn
 
@@ -86,18 +91,34 @@ def upsert_job(conn: sqlite3.Connection, job: Job) -> bool:
         if job.source != row["source"]:
             also_on.add(job.source)
         conn.execute(
-            "UPDATE jobs SET last_seen = ?, also_on = ? WHERE id = ?",
-            (seen, ",".join(sorted(also_on)), row["id"]),
+            "UPDATE jobs SET last_seen = ?, also_on = ?, apply_url = CASE WHEN ? != '' THEN ? ELSE apply_url END WHERE id = ?",
+            (seen, ",".join(sorted(also_on)), job.apply_url, job.apply_url, row["id"]),
         )
         return False
     conn.execute(
         """INSERT INTO jobs (source, url, url_key, content_key, company, title, location,
-                             remote, description, posted_at, first_seen, last_seen)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                             remote, description, posted_at, apply_url, first_seen, last_seen)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (job.source, job.url, job.url_key, job.content_key, job.company, job.title,
-         job.location, int(job.remote), job.description, job.posted_at, seen, seen),
+         job.location, int(job.remote), job.description, job.posted_at, job.apply_url, seen, seen),
     )
     return True
+
+
+def set_application(conn, job_id: int, status: str, resume_path: str | None = None, notes: str | None = None,
+                    applied_at: str | None = None, follow_up_on: str | None = None) -> None:
+    """Record an application's status, keeping any earlier values not given here."""
+    conn.execute(
+        """INSERT INTO applications (job_id, status, resume_path, applied_at, follow_up_on, notes, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(job_id) DO UPDATE SET status = excluded.status,
+               resume_path = COALESCE(excluded.resume_path, resume_path),
+               applied_at = COALESCE(excluded.applied_at, applied_at),
+               follow_up_on = COALESCE(excluded.follow_up_on, follow_up_on),
+               notes = COALESCE(excluded.notes, notes),
+               updated_at = excluded.updated_at""",
+        (job_id, status, resume_path, applied_at, follow_up_on, notes, now()),
+    )
 
 
 def record_run(conn, source: str, ok: bool, fetched: int = 0, added: int = 0, message: str = "") -> None:

@@ -1,11 +1,13 @@
 """Parser tests using small samples written to match the formats each source returned."""
+import sqlite3
+
 import httpx
 
 from jobhunter import db
 from jobhunter.http import Http
 from jobhunter.models import Job, normalize_url
 from jobhunter.sources import (
-    arbeitnow, ashby, greenhouse, hackernews, himalayas, jobicy, remoteok, remotive, weworkremotely,
+    arbeitnow, ashby, greenhouse, hackernews, himalayas, jobicy, lever, remoteok, remotive, weworkremotely, workday,
 )
 
 
@@ -118,6 +120,86 @@ def test_ashby_combines_locations_and_skips_unlisted():
     ]}, "ramp")
     assert len(jobs) == 1
     assert jobs[0].title == "SDE" and jobs[0].location == "New York, Remote (Canada)"
+
+
+def test_lever_combines_description_and_converts_milliseconds():
+    job = lever.parse([{
+        "text": " SDE ", "hostedUrl": "https://jobs.lever.co/cred/1", "applyUrl": "https://jobs.lever.co/cred/1/apply",
+        "categories": {"location": "hyderabad", "allLocations": ["hyderabad", "Bangalore"]},
+        "workplaceType": "onsite", "createdAt": 1793646205000, "descriptionPlain": "About",
+        "lists": [{"text": "Requirements", "content": "<li>Python</li>"}], "additionalPlain": "Benefits",
+    }], "cred")[0]
+    assert (job.title, job.location, job.remote) == ("SDE", "hyderabad, Bangalore", False)
+    assert job.posted_at.startswith("2026-") and job.apply_url.endswith("/apply")
+    assert all(text in job.description for text in ("About", "Requirements", "Python", "Benefits"))
+
+
+def test_workday_detail_includes_country():
+    job = workday.parse_detail({"jobPostingInfo": {
+        "title": "SDE", "externalUrl": "https://x.wd1.myworkdayjobs.com/s/job/1", "location": "Pune",
+        "additionalLocations": ["Mumbai"], "country": {"descriptor": "India"}, "jobDescription": "<p>d</p>",
+        "startDate": "2026-10-30", "remoteType": "Hybrid",
+    }}, "Mastercard")
+    assert (job.company, job.location, job.remote) == ("Mastercard", "Pune, Mumbai, India", False)
+    assert workday.parse_detail({"jobPostingInfo": {}}, "X") is None
+
+
+def test_workday_fetches_details_only_for_matching_titles(monkeypatch):
+    monkeypatch.setattr(workday, "QUERIES", ["software engineer"])
+    monkeypatch.setattr(workday, "load_yaml", lambda name: {
+        "roles": {"software": ["software engineer"]}, "exclude_titles": ["senior"],
+    })
+    calls = []
+
+    def handler(request):
+        calls.append((request.method, request.url.path))
+        if request.method == "POST":
+            return httpx.Response(200, json={"jobPostings": [
+                {"title": "Software Engineer", "externalPath": "/job/a"},
+                {"title": "Senior Software Engineer", "externalPath": "/job/b"},
+                {"title": "Technician", "externalPath": "/job/c"},
+            ]})
+        return httpx.Response(200, json={"jobPostingInfo": {"title": "Software Engineer", "externalUrl": "https://x/a"}})
+
+    http = Http(delay=0, transport=httpx.MockTransport(handler))
+    jobs = workday.fetch(http, {"workday": [{"name": "Acme", "tenant": "acme", "dc": "wd1", "site": "S"}]})
+    assert [j.company for j in jobs] == ["Acme"]
+    assert [path for method, path in calls if method == "GET"] == ["/wday/cxs/acme/S/job/a"]
+
+
+def test_greenhouse_and_ashby_give_form_addresses():
+    gh = greenhouse.parse({"jobs": [{"absolute_url": "https://stripe.com/x", "id": 7, "title": "SDE"}]}, "stripe")[0]
+    assert gh.apply_url == "https://job-boards.greenhouse.io/embed/job_app?for=stripe&token=7"
+    ash = ashby.parse({"jobs": [{"title": "SDE", "jobUrl": "https://jobs.ashbyhq.com/a/1"}]}, "a")[0]
+    assert ash.apply_url == "https://jobs.ashbyhq.com/a/1/application"
+
+
+def test_old_database_gets_apply_url_column(tmp_path):
+    path = tmp_path / "old.db"
+    old = sqlite3.connect(path)
+    old.execute("CREATE TABLE jobs (id INTEGER PRIMARY KEY, url TEXT, relevant INTEGER, eligibility TEXT)")
+    old.commit()
+    old.close()
+    conn = db.connect(path)
+    assert "apply_url" in {row["name"] for row in conn.execute("PRAGMA table_info(jobs)")}
+
+
+def test_refetch_fills_in_apply_url():
+    conn = db.connect(":memory:")
+    db.upsert_job(conn, make())
+    job = make()
+    job.apply_url = "https://job-boards.greenhouse.io/embed/job_app?for=a&token=1"
+    db.upsert_job(conn, job)
+    assert conn.execute("SELECT apply_url FROM jobs").fetchone()["apply_url"] == job.apply_url
+
+
+def test_application_status_keeps_earlier_values():
+    conn = db.connect(":memory:")
+    conn.execute("PRAGMA foreign_keys = OFF")
+    db.set_application(conn, 1, "prefilled", resume_path="a.pdf")
+    db.set_application(conn, 1, "applied", applied_at="2026-11-03", follow_up_on="2026-11-10")
+    row = conn.execute("SELECT * FROM applications").fetchone()
+    assert (row["status"], row["resume_path"], row["follow_up_on"]) == ("applied", "a.pdf", "2026-11-10")
 
 
 def test_normalize_url_keeps_job_ids_and_drops_tracking():

@@ -16,6 +16,21 @@ greenhouse:
   - groww
   - razorpaysoftwareprivatelimited
 
+lever:
+  - meesho
+  - cred
+  - zeta
+  - spotify
+  - palantir
+
+workday:
+  - {name: NVIDIA, tenant: nvidia, dc: wd5, site: NVIDIAExternalCareerSite}
+  - {name: Salesforce, tenant: salesforce, dc: wd12, site: External_Career_Site}
+  - {name: Adobe, tenant: adobe, dc: wd5, site: external_experienced}
+  - {name: Intel, tenant: intel, dc: wd1, site: External}
+  - {name: Mastercard, tenant: mastercard, dc: wd1, site: CorporateCareers}
+  - {name: Accenture, tenant: accenture, dc: wd103, site: AccentureCareers}
+
 ashby:
   - ramp
   - openai

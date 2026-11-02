@@ -6,9 +6,11 @@ from jobhunter.sources import (
     himalayas,
     hackernews,
     jobicy,
+    lever,
     remoteok,
     remotive,
     weworkremotely,
+    workday,
 )
 
 SOURCES = {
@@ -23,5 +25,7 @@ SOURCES = {
         hackernews,
         greenhouse,
         ashby,
+        lever,
+        workday,
     )
 }

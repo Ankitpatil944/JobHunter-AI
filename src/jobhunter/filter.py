@@ -44,7 +44,7 @@ REQUIRED_YEARS = re.compile(
     re.I,
 )
 # These boards only list open roles, so an old post date doesn't mean the job has closed.
-LIVE_BOARDS = {"greenhouse", "ashby"}
+LIVE_BOARDS = {"greenhouse", "ashby", "lever", "workday"}
 SPONSOR = re.compile(
     r"(visa sponsorship|sponsor(s|ing)? (a |your |work )?(visa|visas|work permit)|"
     r"relocation and visa|visa and relocation|visa support|work permit support)",
@@ -72,6 +72,15 @@ def match_role(title: str, rules: Rules) -> str | None:
         if pattern and pattern.search(title):
             return name
     return None
+
+
+def _excluded(title: str, rules: Rules) -> bool:
+    checked = rules.always_allow.sub(" ", title) if rules.always_allow else title
+    return bool(rules.exclude and rules.exclude.search(checked))
+
+
+def title_matches(title: str, rules: Rules) -> bool:
+    return bool(match_role(title, rules)) and not _excluded(title, rules)
 
 
 def required_years(description: str) -> int | None:
@@ -130,9 +139,8 @@ def evaluate(title: str, location: str, remote: bool, description: str, posted_a
     markets, eligibility = classify_market(location, remote, description, title)
     role = match_role(title, rules)
     reason = None
-    checked_title = rules.always_allow.sub(" ", title) if rules.always_allow else title
     years = required_years(description)
-    if rules.exclude and rules.exclude.search(checked_title):
+    if _excluded(title, rules):
         reason = "excluded title"
     elif not role:
         reason = "no role match"

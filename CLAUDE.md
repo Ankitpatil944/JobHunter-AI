@@ -8,6 +8,7 @@ Run with `.venv\Scripts\python -m jobhunter <command>`:
 - `list [--market] [--role] [--eligibility] [--unscored]`, `show <id>`, `status`
 - `score <id> <0-100> --resume <name> --reason "..." --gaps "..."`
 - `tailor-start <id> <resume>`, `tailor-check <id> [--approved]`
+- `apply <id> [--pdf path]`: pre-fill in a visible browser. `mark <id> applied|skipped|interview|rejected|offer`
 
 Tests: `.venv\Scripts\python -m pytest`
 

@@ -25,6 +25,7 @@ def parse(data: dict, slug: str) -> list[Job]:
                 remote=bool(item.get("isRemote")) or item.get("workplaceType") == "Remote",
                 description=item.get("descriptionPlain") or "",
                 posted_at=item.get("publishedAt"),
+                apply_url=f"{item['jobUrl']}/application",
             )
         )
     return jobs

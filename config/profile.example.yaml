@@ -21,5 +21,14 @@ work:
   expected_salary_usd: ""
 authorization:
   authorized_in_india: ""
-  needs_visa_sponsorship_abroad: ""
+  needs_sponsorship_india: ""
+  needs_sponsorship_abroad: ""
   willing_to_relocate: ""
+education:
+  school: ""
+  degree: ""
+# Your own wording for any question, matched on part of its text. These can also answer
+# questions that are otherwise always left for you, such as demographic ones.
+answers: []
+#  - match: "primary programming language"
+#    answer: "Java and Python"

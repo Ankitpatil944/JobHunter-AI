@@ -24,6 +24,7 @@ class Job:
     remote: bool = False
     description: str = ""
     posted_at: str | None = None
+    apply_url: str = ""
 
     @property
     def url_key(self) -> str:
