@@ -1,0 +1,25 @@
+# Copy to config/profile.yaml and fill it in. That copy is gitignored and never pushed.
+# Leave anything blank to have it highlighted on the form instead of guessed.
+name:
+  first: ""
+  last: ""
+email: ""
+phone: ""
+location:
+  city: ""
+  country: India
+links:
+  linkedin: ""
+  github: ""
+  portfolio: ""
+work:
+  years_experience: ""
+  current_company: ""
+  current_title: ""
+  notice_period_days: ""
+  expected_salary_inr: ""
+  expected_salary_usd: ""
+authorization:
+  authorized_in_india: ""
+  needs_visa_sponsorship_abroad: ""
+  willing_to_relocate: ""

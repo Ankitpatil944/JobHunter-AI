@@ -3,7 +3,7 @@ import argparse
 import sys
 from datetime import datetime, timedelta, timezone
 
-from jobhunter import db
+from jobhunter import db, tailor
 from jobhunter.config import load_yaml
 from jobhunter.filter import Rules, apply_filters
 from jobhunter.http import Http
@@ -100,6 +100,35 @@ def cmd_status(args) -> int:
     return 0
 
 
+def cmd_score(args) -> int:
+    conn = db.connect()
+    if not conn.execute("SELECT 1 FROM jobs WHERE id = ?", (args.job_id,)).fetchone():
+        print(f"No job with id {args.job_id}", file=sys.stderr)
+        return 1
+    tailor.save_score(conn, args.job_id, args.score, args.resume, args.reason, args.gaps)
+    conn.commit()
+    print(f"Saved score {args.score} for job {args.job_id}")
+    return 0
+
+
+def cmd_tailor_start(args) -> int:
+    print(tailor.start(args.job_id, args.resume))
+    return 0
+
+
+def cmd_tailor_check(args) -> int:
+    report = tailor.check(args.job_id, approved=args.approved)
+    for label, items in (("BLOCKED", report.blocking), ("NEEDS REVIEW", report.needs_review), ("NOTE", report.notes)):
+        for item in items:
+            print(f"{label}: {item}")
+    if report.passed:
+        print(f"PASSED. Tailored PDF: {report.pdf}")
+        return 0
+    if report.pdf:
+        print(f"NOT PASSED. Using the untouched base resume: {report.pdf}")
+    return 1
+
+
 def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -125,6 +154,25 @@ def main(argv: list[str] | None = None) -> int:
 
     status = sub.add_parser("status", help="show counts and source health")
     status.set_defaults(func=cmd_status)
+
+    score = sub.add_parser("score", help="record a job's match score")
+    score.add_argument("job_id", type=int)
+    score.add_argument("score", type=int)
+    score.add_argument("--resume", required=True)
+    score.add_argument("--reason", required=True)
+    score.add_argument("--gaps", default="")
+    score.set_defaults(func=cmd_score)
+
+    tailor_start = sub.add_parser("tailor-start", help="copy a base resume into a job's folder")
+    tailor_start.add_argument("job_id", type=int)
+    tailor_start.add_argument("resume")
+    tailor_start.set_defaults(func=cmd_tailor_start)
+
+    tailor_check = sub.add_parser("tailor-check", help="compile and check a tailored resume")
+    tailor_check.add_argument("job_id", type=int)
+    tailor_check.add_argument("--approved", action="store_true",
+                              help="the person has reviewed the flagged new numbers and skills")
+    tailor_check.set_defaults(func=cmd_tailor_check)
 
     args = parser.parse_args(argv)
     return args.func(args)
